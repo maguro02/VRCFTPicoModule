@@ -14,8 +14,24 @@ expression-tracking: enable
 # Eye gaze multiplier applied after the (LookIn - LookOut) / (LookUp - LookDown) diff.
 # 1.0 = pass-through (identical to upstream lonelyicer behavior).
 # Increase if your gaze feels too weak; decrease if it overshoots.
+# Final Gaze.x and Gaze.y are clamped to [-1.0, +1.0] regardless of this multiplier,
+# so values above 1.0 will saturate at the edges rather than extending the range.
 # Format: X, Y
 eye_gain: 1.0, 1.0
+
+# Asymmetric gain applied to the Y (up/down) axis *before* eye_gain's Y component.
+# Only the sign-matching side is multiplied:
+#   Gaze.y >= 0  ->  multiplied by eye_gain_y_up
+#   Gaze.y <  0  ->  multiplied by eye_gain_y_down
+# The final Gaze.y is clamped to [-1.0, +1.0].
+#
+# PICO Connect tends to under-report upward gaze (raw Up channel saturates ~0.25
+# while Down reaches ~0.65), so the upward eye motion feels weak on the avatar.
+# Recommended for PICO 4 Pro / Enterprise: eye_gain_y_up around 2.5 - 3.0,
+# eye_gain_y_down left at 1.0. Increase gradually; a value that makes forward
+# gaze look upward means the gain (or eye_gain Y) is too high.
+eye_gain_y_up: 1.0
+eye_gain_y_down: 1.0
 
 # Raw value CSV logger. When enabled, one row per received packet is written to
 # `log-file` (rate-limited by log-interval-ms). Useful for observing what PICO
