@@ -99,14 +99,24 @@ namespace VRCFTPicoModule.Utils
 
             #region LeftEye
             eye.Left.Openness = 1f - pShape[(int)BlendShape.Index.EyeBlink_L];
-            eye.Left.Gaze.x = (pShape[(int)BlendShape.Index.EyeLookIn_L] - pShape[(int)BlendShape.Index.EyeLookOut_L]) * config.EyeGainX;
-            eye.Left.Gaze.y = (pShape[(int)BlendShape.Index.EyeLookUp_L] - pShape[(int)BlendShape.Index.EyeLookDown_L]) * config.EyeGainY;
+            eye.Left.Gaze.x = Math.Clamp(
+                (pShape[(int)BlendShape.Index.EyeLookIn_L] - pShape[(int)BlendShape.Index.EyeLookOut_L]) * config.EyeGainX,
+                -1f, 1f);
+            eye.Left.Gaze.y = ComputeGazeY(
+                pShape[(int)BlendShape.Index.EyeLookUp_L],
+                pShape[(int)BlendShape.Index.EyeLookDown_L],
+                config);
             #endregion
 
             #region RightEye
             eye.Right.Openness = 1f - pShape[(int)BlendShape.Index.EyeBlink_R];
-            eye.Right.Gaze.x = (pShape[(int)BlendShape.Index.EyeLookOut_R] - pShape[(int)BlendShape.Index.EyeLookIn_R]) * config.EyeGainX;
-            eye.Right.Gaze.y = (pShape[(int)BlendShape.Index.EyeLookUp_R] - pShape[(int)BlendShape.Index.EyeLookDown_R]) * config.EyeGainY;
+            eye.Right.Gaze.x = Math.Clamp(
+                (pShape[(int)BlendShape.Index.EyeLookOut_R] - pShape[(int)BlendShape.Index.EyeLookIn_R]) * config.EyeGainX,
+                -1f, 1f);
+            eye.Right.Gaze.y = ComputeGazeY(
+                pShape[(int)BlendShape.Index.EyeLookUp_R],
+                pShape[(int)BlendShape.Index.EyeLookDown_R],
+                config);
             #endregion
             
             #region Brow
@@ -279,6 +289,13 @@ namespace VRCFTPicoModule.Utils
         {
             lastValue += (newValue - lastValue) * SmoothingFactor;
             return lastValue;
+        }
+
+        private static float ComputeGazeY(float lookUp, float lookDown, Config config)
+        {
+            var raw = lookUp - lookDown;
+            var y = raw * (raw >= 0f ? config.EyeGainYUp : config.EyeGainYDown) * config.EyeGainY;
+            return Math.Clamp(y, -1f, 1f);
         }
 
         private static void SetParam(float[] pShape, BlendShape.Index index, UnifiedExpressions outputType)
