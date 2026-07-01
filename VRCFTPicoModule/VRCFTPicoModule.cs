@@ -60,6 +60,7 @@ public class VRCFTPicoModule : ExtTrackingModule
                 _config.ResolveLogPath(),
                 _config.LogIntervalMs,
                 _config.LogIncludeVisemes,
+                _port == Ports[1],
                 Logger);
             _rawLogger.Start();
         }

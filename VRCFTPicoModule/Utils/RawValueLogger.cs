@@ -11,6 +11,7 @@ public class RawValueLogger : IDisposable
     private readonly string _filePath;
     private readonly int _intervalMs;
     private readonly bool _includeVisemes;
+    private readonly bool _visemesForcedOff;
     private readonly ILogger _logger;
     private readonly ConcurrentQueue<Row> _queue = new();
     private readonly ManualResetEventSlim _wake = new(false);
@@ -40,11 +41,14 @@ public class RawValueLogger : IDisposable
         }
     }
 
-    public RawValueLogger(string filePath, int intervalMs, bool includeVisemes, ILogger logger)
+    public RawValueLogger(string filePath, int intervalMs, bool includeVisemes, bool isLegacy, ILogger logger)
     {
         _filePath = filePath;
         _intervalMs = Math.Max(0, intervalMs);
-        _includeVisemes = includeVisemes;
+        // Legacy packets only carry 52 shapes, so requesting visemes would produce rows with
+        // fewer columns than the header. Force visemes off in that case (and warn once in Start()).
+        _includeVisemes = includeVisemes && !isLegacy;
+        _visemesForcedOff = includeVisemes && isLegacy;
         _logger = logger;
         _thread = new Thread(WriterLoop) { IsBackground = true, Name = "PicoRawValueLogger" };
     }
@@ -53,6 +57,9 @@ public class RawValueLogger : IDisposable
     {
         try
         {
+            if (_visemesForcedOff)
+                _logger.LogWarning("log-include-visemes was requested but the legacy protocol only carries 52 shapes; visemes column will be omitted from the CSV.");
+
             var dir = Path.GetDirectoryName(_filePath);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
