@@ -185,6 +185,8 @@ public class Config
         # Eye gaze multiplier applied after the (LookIn - LookOut) / (LookUp - LookDown) diff.
         # 1.0 = pass-through (identical to upstream lonelyicer behavior).
         # Increase if your gaze feels too weak; decrease if it overshoots.
+        # Final Gaze.x and Gaze.y are clamped to [-1.0, +1.0] regardless of this multiplier,
+        # so values above 1.0 will saturate at the edges rather than extending the range.
         # Format: X, Y
         eye_gain: 1.0, 1.0
 

@@ -52,7 +52,7 @@ Available keys:
 |---|---|---|
 | `eye-tracking` | `enable` | Turn the eye stream on/off |
 | `expression-tracking` | `enable` | Turn the expression stream on/off |
-| `eye_gain` | `1.0, 1.0` | Multiplier applied to gaze X, Y after the diff. `1.0` = pass-through |
+| `eye_gain` | `1.0, 1.0` | Multiplier applied to gaze X, Y after the diff. `1.0` = pass-through. Final gaze values are clamped to `[-1, 1]` |
 | `eye_gain_y_up` | `1.0` | Extra gain applied only when `Gaze.y >= 0` (looking up). PICO Connect under-reports upward gaze; try `2.5`-`3.0`. Final `Gaze.y` is clamped to `[-1, 1]`. |
 | `eye_gain_y_down` | `1.0` | Extra gain applied only when `Gaze.y < 0` (looking down). Usually leave at `1.0` for PICO. |
 | `log-raw` | `disable` | Enable CSV logging of the raw 52-blendshape packet + computed eye state |
