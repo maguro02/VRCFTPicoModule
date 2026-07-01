@@ -11,6 +11,33 @@ public class Config
     public float EyeGainY { get; private set; } = 1.0f;
     public float EyeGainYUp { get; private set; } = 1.0f;
     public float EyeGainYDown { get; private set; } = 1.0f;
+
+    // Mouth calibration defaults derived from PICO 4 Pro raw-log observations at rest.
+    // Each shape uses `output = clamp01((raw - floor) * gain)` before downstream logic.
+    public float JawOpenFloor { get; private set; } = 0.05f;
+    public float JawOpenGain { get; private set; } = 1.0f;
+    public float MouthFrownFloor { get; private set; } = 0.14f;
+    public float MouthFrownGain { get; private set; } = 2.0f;
+    public float MouthSmileGain { get; private set; } = 1.0f;
+    public float MouthPuckerFloor { get; private set; } = 0.10f;
+    public float MouthPuckerGain { get; private set; } = 1.0f;
+    public float MouthFunnelFloor { get; private set; } = 0.05f;
+    public float MouthRollLowerFloor { get; private set; } = 0.16f;
+    public float MouthRollUpperFloor { get; private set; } = 0.05f;
+
+    // PICO Connect keeps CheekPuff pegged near its noise floor even during a real cheek puff,
+    // and CheekSquint is emitted as a constant. Disabled by default; can be re-enabled for
+    // users on hardware/firmware that produces usable signal.
+    public bool CheekPuffEnabled { get; private set; }
+    public float CheekPuffFloor { get; private set; } = 0.14f;
+    public float CheekPuffGain { get; private set; } = 1.0f;
+    public float CheekPuffCrossThreshold { get; private set; } = 0.25f;
+    public bool CheekSquintEnabled { get; private set; }
+
+    // PICO Connect fires MouthLeft and MouthRight together when the mouth shifts to one side.
+    // Differential mode passes only the dominant side, which prevents the opposite-cheek bleed.
+    public bool MouthLeftRightDifferential { get; private set; } = true;
+
     public bool LogRaw { get; private set; }
     public string LogFile { get; private set; } = "PicoRawLog.csv";
     public int LogIntervalMs { get; private set; } = 50;
@@ -70,6 +97,21 @@ public class Config
                 config.EyeGainYDown,
                 config.LogRaw,
                 config.LogIntervalMs);
+            logger.LogInformation(
+                "mouth calibration: jaw=(floor={JawFloor},gain={JawGain}) frown=(floor={FrownFloor},gain={FrownGain}) smile-gain={SmileGain} pucker=(floor={PuckerFloor},gain={PuckerGain}) funnel-floor={FunnelFloor} roll=(lower-floor={RollLowerFloor},upper-floor={RollUpperFloor}) cheek-puff={CheekPuff} cheek-squint={CheekSquint} mouth-lr-differential={LrDiff}",
+                config.JawOpenFloor,
+                config.JawOpenGain,
+                config.MouthFrownFloor,
+                config.MouthFrownGain,
+                config.MouthSmileGain,
+                config.MouthPuckerFloor,
+                config.MouthPuckerGain,
+                config.MouthFunnelFloor,
+                config.MouthRollLowerFloor,
+                config.MouthRollUpperFloor,
+                config.CheekPuffEnabled,
+                config.CheekSquintEnabled,
+                config.MouthLeftRightDifferential);
         }
         catch (Exception ex)
         {
@@ -107,18 +149,61 @@ public class Config
                     EyeGainY = ParseFloat("eye_gain Y component", parts[1].Trim(), EyeGainY, logger);
                 break;
             case "eye_gain_y_up":
-                EyeGainYUp = ParseFloat("eye_gain_y_up", value, EyeGainYUp, logger, min: 0f);
+                EyeGainYUp = ParseFloat(key, value, EyeGainYUp, logger, min: 0f);
                 break;
             case "eye_gain_y_down":
-                EyeGainYDown = ParseFloat("eye_gain_y_down", value, EyeGainYDown, logger, min: 0f);
+                EyeGainYDown = ParseFloat(key, value, EyeGainYDown, logger, min: 0f);
+                break;
+            case "jaw_open_floor":
+                JawOpenFloor = ParseFloat(key, value, JawOpenFloor, logger, min: 0f);
+                break;
+            case "jaw_open_gain":
+                JawOpenGain = ParseFloat(key, value, JawOpenGain, logger, min: 0f);
+                break;
+            case "mouth_frown_floor":
+                MouthFrownFloor = ParseFloat(key, value, MouthFrownFloor, logger, min: 0f);
+                break;
+            case "mouth_frown_gain":
+                MouthFrownGain = ParseFloat(key, value, MouthFrownGain, logger, min: 0f);
+                break;
+            case "mouth_smile_gain":
+                MouthSmileGain = ParseFloat(key, value, MouthSmileGain, logger, min: 0f);
+                break;
+            case "mouth_pucker_floor":
+                MouthPuckerFloor = ParseFloat(key, value, MouthPuckerFloor, logger, min: 0f);
+                break;
+            case "mouth_pucker_gain":
+                MouthPuckerGain = ParseFloat(key, value, MouthPuckerGain, logger, min: 0f);
+                break;
+            case "mouth_funnel_floor":
+                MouthFunnelFloor = ParseFloat(key, value, MouthFunnelFloor, logger, min: 0f);
+                break;
+            case "mouth_roll_lower_floor":
+                MouthRollLowerFloor = ParseFloat(key, value, MouthRollLowerFloor, logger, min: 0f);
+                break;
+            case "mouth_roll_upper_floor":
+                MouthRollUpperFloor = ParseFloat(key, value, MouthRollUpperFloor, logger, min: 0f);
+                break;
+            case "cheek_puff":
+                CheekPuffEnabled = ParseBoolOr(key, value, CheekPuffEnabled, logger);
+                break;
+            case "cheek_puff_floor":
+                CheekPuffFloor = ParseFloat(key, value, CheekPuffFloor, logger, min: 0f);
+                break;
+            case "cheek_puff_gain":
+                CheekPuffGain = ParseFloat(key, value, CheekPuffGain, logger, min: 0f);
+                break;
+            case "cheek_puff_cross_threshold":
+                CheekPuffCrossThreshold = ParseFloat(key, value, CheekPuffCrossThreshold, logger, min: 0f);
+                break;
+            case "cheek_squint":
+                CheekSquintEnabled = ParseBoolOr(key, value, CheekSquintEnabled, logger);
+                break;
+            case "mouth_lr_differential":
+                MouthLeftRightDifferential = ParseBoolOr(key, value, MouthLeftRightDifferential, logger);
                 break;
             case "log-raw":
-                {
-                    var parsed = ParseBoolEnable(value);
-                    if (parsed is null)
-                        logger.LogWarning("config.ini {Key}='{Value}' is not a recognized enable/disable value; keeping default", key, value);
-                    else LogRaw = parsed.Value;
-                }
+                LogRaw = ParseBoolOr(key, value, LogRaw, logger);
                 break;
             case "log-file":
                 if (value.Length > 0) LogFile = value;
@@ -131,12 +216,7 @@ public class Config
                         value, LogIntervalMs);
                 break;
             case "log-include-visemes":
-                {
-                    var parsed = ParseBoolEnable(value);
-                    if (parsed is null)
-                        logger.LogWarning("config.ini {Key}='{Value}' is not a recognized enable/disable value; keeping default", key, value);
-                    else LogIncludeVisemes = parsed.Value;
-                }
+                LogIncludeVisemes = ParseBoolOr(key, value, LogIncludeVisemes, logger);
                 break;
             default:
                 logger.LogWarning("config.ini contains unknown key '{Key}'; ignoring", key);
@@ -152,6 +232,14 @@ public class Config
             "disable" or "disabled" or "false" or "0" or "off" or "no" => false,
             _ => null,
         };
+    }
+
+    private static bool ParseBoolOr(string key, string value, bool @default, ILogger logger)
+    {
+        var parsed = ParseBoolEnable(value);
+        if (parsed is not null) return parsed.Value;
+        logger.LogWarning("config.ini {Key}='{Value}' is not a recognized enable/disable value; keeping default", key, value);
+        return @default;
     }
 
     private static float ParseFloat(string label, string value, float @default, ILogger logger, float min = float.NegativeInfinity)
@@ -203,6 +291,40 @@ public class Config
         # gaze look upward means the gain (or eye_gain Y) is too high.
         eye_gain_y_up: 1.0
         eye_gain_y_down: 1.0
+
+        # ---- Mouth calibration --------------------------------------------------
+        # PICO Connect emits several mouth blendshapes with a persistent non-zero baseline at
+        # rest (e.g. MouthFrown ~ 0.14 in a neutral face on PICO 4 Pro), which shows up on the
+        # avatar as a permanent frown / puff / lip-roll. Each calibrated shape below is
+        # transformed as:
+        #   output = clamp01((raw - floor) * gain)
+        # so the floor cancels the resting bias and the gain restores expressive range.
+        # Defaults are derived from observed PICO 4 Pro logs; adjust per user/hardware by
+        # watching the raw CSV (see log-raw below).
+        jaw_open_floor: 0.05
+        jaw_open_gain: 1.0
+        mouth_frown_floor: 0.14
+        mouth_frown_gain: 2.0
+        mouth_smile_gain: 1.0
+        mouth_pucker_floor: 0.10
+        mouth_pucker_gain: 1.0
+        mouth_funnel_floor: 0.05
+        mouth_roll_lower_floor: 0.16
+        mouth_roll_upper_floor: 0.05
+
+        # ---- Cheek channels ----------------------------------------------------
+        # PICO Connect does not reliably drive CheekPuff or CheekSquint on tested firmware,
+        # so both are disabled by default. Re-enable if your hardware/firmware differs.
+        cheek_puff: disable
+        cheek_puff_floor: 0.14
+        cheek_puff_gain: 1.0
+        cheek_puff_cross_threshold: 0.25
+        cheek_squint: disable
+
+        # Differential mode for MouthLeft/Right: PICO fires both simultaneously when the mouth
+        # shifts to one side, so this passes only the dominant side to prevent opposite-side
+        # bleed. Disable only if your avatar rig expects the raw simultaneous values.
+        mouth_lr_differential: enable
 
         # Raw value CSV logger. When enabled, one row per received packet is written to `log-file`
         # (rate-limited by log-interval-ms). Useful for observing what PICO Connect is actually
