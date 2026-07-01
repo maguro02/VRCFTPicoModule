@@ -156,9 +156,10 @@ public class Config
 
     private static float ParseFloat(string label, string value, float @default, ILogger logger, float min = float.NegativeInfinity)
     {
-        if (float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && parsed >= min)
+        if (float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+            && float.IsFinite(parsed) && parsed >= min)
             return parsed;
-        var kind = min > float.NegativeInfinity ? $"a number >= {min}" : "a number";
+        var kind = min > float.NegativeInfinity ? $"a finite number >= {min}" : "a finite number";
         logger.LogWarning("config.ini {Label} '{Value}' is not {Kind}; keeping default {Default}",
             label, value, kind, @default);
         return @default;
