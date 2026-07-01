@@ -39,12 +39,44 @@ Done! You have successfully installed the module.
 > To manual change protocol version,
 > you will need change the value of `faceTrackingTransferProtocol` in the `settings.json` file located in the `%AppData%/PICO Connect/` directory to `2` or `1`.
 
-## Configuration  
+## Configuration
 
-To selectively disable eye or facial expression tracking, please follow these steps:  
+On first run the module drops a `config.ini` next to the DLL
+(`%APPDATA%\VRCFaceTracking\CustomLibs\config.ini`). Edit it and restart
+VRCFaceTracking to apply. See [`VRCFTPicoModule/config.ini.example`](VRCFTPicoModule/config.ini.example)
+for the full annotated template.
 
-### 1.Navigate to the module's configuration directory (path can be found in module logs)
-### 2.Create corresponding files:
-   - Create `.disable_eye` to disable eye tracking
-   - Create `.disable_expression` to disable facial expression tracking
-### 3.Restart the VRCFaceTracking for changes to take effect
+Available keys:
+
+| Key | Default | Purpose |
+|---|---|---|
+| `eye-tracking` | `enable` | Turn the eye stream on/off |
+| `expression-tracking` | `enable` | Turn the expression stream on/off |
+| `eye_gain` | `1.0, 1.0` | Multiplier applied to gaze X, Y after the diff. `1.0` = pass-through |
+| `log-raw` | `disable` | Enable CSV logging of the raw 52-blendshape packet + computed eye state |
+| `log-file` | `PicoRawLog.csv` | Log file path (relative resolves next to the DLL) |
+| `log-interval-ms` | `50` | Minimum interval between logged rows |
+| `log-include-visemes` | `disable` | Also log the 20 Pico visemes (index 52..71) |
+
+The legacy `.disable_eye` / `.disable_expression` flag files are still honored.
+
+### Debugging what PICO Connect is sending
+
+Set `log-raw: enable` and open the resulting CSV. Each row contains:
+
+- `wallclock_ms` — receive timestamp on the PC
+- The 52 ARKit-style blendshapes (index 0..51) by name, plus optionally the 20 visemes
+- `Openness_L`, `GazeX_L`, `GazeY_L`, `Openness_R`, `GazeX_R`, `GazeY_R` — the values
+  actually written into `UnifiedTracking.Data.Eye` after this module's computation
+
+> [!NOTE]
+> When `eye-tracking: disable` (or a `.disable_eye` flag file is present), this module does
+> not update `UnifiedTracking.Data.Eye`, so the `Openness_*` / `Gaze*` columns reflect
+> whatever another module last wrote (or the default `0`), not this module's input. Only
+> the raw blendshape columns are meaningful in that case.
+>
+> The `log-include-visemes: enable` option is silently ignored on the legacy protocol
+> (port `29763`) because those packets only carry the 52 ARKit shapes.
+
+This lets you observe the raw Pico input and the module's derived eye state side-by-side
+without patching the DLL or running Wireshark.

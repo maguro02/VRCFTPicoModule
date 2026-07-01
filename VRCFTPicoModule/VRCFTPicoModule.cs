@@ -15,6 +15,8 @@ public class VRCFTPicoModule : ExtTrackingModule
     private static UdpClient _udpClient = new();
     private static int _port;
     private Updater? _updater;
+    private Config? _config;
+    private RawValueLogger? _rawLogger;
     private (bool, bool) _trackingAvailable;
 
     public override (bool SupportsEye, bool SupportsExpression) Supported => (true, true);
@@ -23,16 +25,16 @@ public class VRCFTPicoModule : ExtTrackingModule
     {
         Localization.Initialize(CultureInfo.CurrentUICulture.Name);
         Logger.LogInformation(T("start-init"));
-        
-        var config = ReadConfiguration();
+
+        _config = LoadConfig();
         _trackingAvailable = (
-            !config.Item1 && eyeAvailable,
-            !config.Item2 && expressionAvailable
+            !_config.DisableEye && eyeAvailable,
+            !_config.DisableExpression && expressionAvailable
         );
-        
+
         var initializationResult = InitializeAsync().GetAwaiter().GetResult();
         UpdateModuleInfo(initializationResult);
-        
+
         return initializationResult;
     }
 
@@ -46,44 +48,44 @@ public class VRCFTPicoModule : ExtTrackingModule
         _port = Ports[portIndex];
         _udpClient = new UdpClient(_port);
         Logger.LogInformation(T("using-port"), _port);
-        
+
         if (!_trackingAvailable.Item1)
             Logger.LogInformation(T("eye-tracking-disabled"));
         if (!_trackingAvailable.Item2)
             Logger.LogInformation(T("expression-tracking-disabled"));
 
-        _updater = new Updater(_udpClient, Logger, _port == Ports[1], _trackingAvailable);
+        if (_config!.LogRaw)
+        {
+            _rawLogger = new RawValueLogger(
+                _config.ResolveLogPath(),
+                _config.LogIntervalMs,
+                _config.LogIncludeVisemes,
+                _port == Ports[1],
+                Logger);
+            _rawLogger.Start();
+        }
+
+        _updater = new Updater(_udpClient, Logger, _port == Ports[1], _trackingAvailable, _config, _rawLogger);
 
         return _trackingAvailable;
     }
 
-    private (bool, bool) ReadConfiguration()
+    private Config LoadConfig()
     {
         var currentDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         Logger.LogInformation(T("config-path"), currentDirectory);
-        
-        if (!Directory.Exists(currentDirectory))
-            return (false, false);
-        
-        var disableEye = false;
-        var disableExpression = false;
-        
-        var eyeFilePath = Path.Combine(currentDirectory, ".disable_eye");
-        if (File.Exists(eyeFilePath))
-        {
-            disableEye = true;
-            Logger.LogInformation(T("force-disable-eye"));
-        }
 
-        var expressionFilePath = Path.Combine(currentDirectory, ".disable_expression");
-        // ReSharper disable once InvertIf
-        if (File.Exists(expressionFilePath))
-        {
-            disableExpression = true;
+        if (string.IsNullOrEmpty(currentDirectory) || !Directory.Exists(currentDirectory))
+            return new Config();
+
+        var config = Config.Load(currentDirectory, Logger);
+
+        if (config.DisableEye)
+            Logger.LogInformation(T("force-disable-eye"));
+        if (config.DisableExpression)
             Logger.LogInformation(T("force-disable-expression"));
-        }
-        
-        return (disableEye, disableExpression);
+
+        return config;
     }
 
     private void UpdateModuleInfo((bool, bool) initializationResult)
@@ -139,5 +141,7 @@ public class VRCFTPicoModule : ExtTrackingModule
         }
         _udpClient.Dispose();
         _updater = null;
+        _rawLogger?.Dispose();
+        _rawLogger = null;
     }
 }

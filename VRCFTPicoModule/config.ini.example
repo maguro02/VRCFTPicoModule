@@ -1,0 +1,34 @@
+# VRCFTPicoModule config.ini
+# Lines starting with '#' or ';' are comments. Each entry uses `key: value` format.
+#
+# On first run, this file is auto-created next to the module DLL
+# (%APPDATA%\VRCFaceTracking\CustomLibs\config.ini) with the same defaults.
+# Edit it in place and restart VRCFT to pick up changes.
+
+# Enable or disable tracking channels.
+# The legacy `.disable_eye` / `.disable_expression` flag files are still honored
+# for backwards compatibility.
+eye-tracking: enable
+expression-tracking: enable
+
+# Eye gaze multiplier applied after the (LookIn - LookOut) / (LookUp - LookDown) diff.
+# 1.0 = pass-through (identical to upstream lonelyicer behavior).
+# Increase if your gaze feels too weak; decrease if it overshoots.
+# Format: X, Y
+eye_gain: 1.0, 1.0
+
+# Raw value CSV logger. When enabled, one row per received packet is written to
+# `log-file` (rate-limited by log-interval-ms). Useful for observing what PICO
+# Connect is actually sending, and for deciding what adjustments are needed.
+log-raw: disable
+
+# Path to the log CSV. Relative paths resolve next to the module DLL. Absolute
+# paths are honored as-is.
+log-file: PicoRawLog.csv
+
+# Minimum interval between logged rows in milliseconds. 0 = log every packet.
+log-interval-ms: 50
+
+# Include the 20 Pico visemes (index 52..71) in the CSV. These are not consumed
+# by the module today, but the values still arrive from PICO Connect.
+log-include-visemes: disable
