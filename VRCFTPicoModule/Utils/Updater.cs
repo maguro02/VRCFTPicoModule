@@ -16,13 +16,17 @@ namespace VRCFTPicoModule.Utils
         private readonly ILogger? _logger;
         private readonly bool _isLegacy;
         private readonly (bool, bool) _trackingAvailable;
+        private readonly Config _config = new();
+        private readonly RawValueLogger? _rawLogger;
 
-        public Updater(UdpClient udpClient, ILogger logger, bool isLegacy, (bool, bool) trackingAvailable) : this()
+        public Updater(UdpClient udpClient, ILogger logger, bool isLegacy, (bool, bool) trackingAvailable, Config config, RawValueLogger? rawLogger) : this()
         {
             _udpClient = udpClient;
             _logger = logger;
             _isLegacy = isLegacy;
             _trackingAvailable = trackingAvailable;
+            _config = config;
+            _rawLogger = rawLogger;
         }
         
         private int _timeOut;
@@ -49,12 +53,20 @@ namespace VRCFTPicoModule.Utils
                 var endPoint = new IPEndPoint(IPAddress.Any, 0);
                 var data = _udpClient.Receive(ref endPoint);
                 var pShape = ParseData(data, _isLegacy);
-                
+
                 if (_trackingAvailable.Item1)
-                    UpdateEye(pShape);
-                
+                    UpdateEye(pShape, _config);
+
                 if (_trackingAvailable.Item2)
                     UpdateExpression(pShape);
+
+                if (_rawLogger != null && pShape.Length > 0)
+                {
+                    var eye = UnifiedTracking.Data.Eye;
+                    _rawLogger.Enqueue(pShape,
+                        eye.Left.Openness, eye.Left.Gaze.x, eye.Left.Gaze.y,
+                        eye.Right.Openness, eye.Right.Gaze.x, eye.Right.Gaze.y);
+                }
             }
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.TimedOut)
             {
@@ -81,20 +93,20 @@ namespace VRCFTPicoModule.Utils
             return header.trackingType == 2 ? DataPacketHelpers.ByteArrayToStructure<DataPacket.DataPackBody>(data, Marshal.SizeOf<DataPacket.DataPackHeader>()).blendShapeWeight : [];
         }
 
-        private static void UpdateEye(float[] pShape)
+        private static void UpdateEye(float[] pShape, Config config)
         {
             var eye = UnifiedTracking.Data.Eye;
 
             #region LeftEye
             eye.Left.Openness = 1f - pShape[(int)BlendShape.Index.EyeBlink_L];
-            eye.Left.Gaze.x = pShape[(int)BlendShape.Index.EyeLookIn_L] - pShape[(int)BlendShape.Index.EyeLookOut_L];
-            eye.Left.Gaze.y = pShape[(int)BlendShape.Index.EyeLookUp_L] - pShape[(int)BlendShape.Index.EyeLookDown_L];
+            eye.Left.Gaze.x = (pShape[(int)BlendShape.Index.EyeLookIn_L] - pShape[(int)BlendShape.Index.EyeLookOut_L]) * config.EyeGainX;
+            eye.Left.Gaze.y = (pShape[(int)BlendShape.Index.EyeLookUp_L] - pShape[(int)BlendShape.Index.EyeLookDown_L]) * config.EyeGainY;
             #endregion
 
             #region RightEye
             eye.Right.Openness = 1f - pShape[(int)BlendShape.Index.EyeBlink_R];
-            eye.Right.Gaze.x = pShape[(int)BlendShape.Index.EyeLookOut_R] - pShape[(int)BlendShape.Index.EyeLookIn_R];
-            eye.Right.Gaze.y = pShape[(int)BlendShape.Index.EyeLookUp_R] - pShape[(int)BlendShape.Index.EyeLookDown_R];
+            eye.Right.Gaze.x = (pShape[(int)BlendShape.Index.EyeLookOut_R] - pShape[(int)BlendShape.Index.EyeLookIn_R]) * config.EyeGainX;
+            eye.Right.Gaze.y = (pShape[(int)BlendShape.Index.EyeLookUp_R] - pShape[(int)BlendShape.Index.EyeLookDown_R]) * config.EyeGainY;
             #endregion
             
             #region Brow
