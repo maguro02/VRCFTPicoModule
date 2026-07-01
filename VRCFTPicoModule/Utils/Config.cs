@@ -55,7 +55,7 @@ public class Config
                 if (separator < 0) continue;
                 var key = line[..separator].Trim().ToLowerInvariant();
                 var value = line[(separator + 1)..].Trim();
-                config.ApplyKey(key, value);
+                config.ApplyKey(key, value, logger);
             }
 
             logger.LogInformation(
@@ -75,25 +75,52 @@ public class Config
         return config;
     }
 
-    private void ApplyKey(string key, string value)
+    private void ApplyKey(string key, string value, ILogger logger)
     {
         switch (key)
         {
             case "eye-tracking":
-                if (ParseBoolEnable(value) == false) DisableEye = true;
+                {
+                    var parsed = ParseBoolEnable(value);
+                    if (parsed is null)
+                        logger.LogWarning("config.ini {Key}='{Value}' is not a recognized enable/disable value; keeping default", key, value);
+                    else if (parsed == false) DisableEye = true;
+                }
                 break;
             case "expression-tracking":
-                if (ParseBoolEnable(value) == false) DisableExpression = true;
+                {
+                    var parsed = ParseBoolEnable(value);
+                    if (parsed is null)
+                        logger.LogWarning("config.ini {Key}='{Value}' is not a recognized enable/disable value; keeping default", key, value);
+                    else if (parsed == false) DisableExpression = true;
+                }
                 break;
             case "eye_gain":
                 var parts = value.Split(',');
-                if (parts.Length >= 1 && float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var gx))
-                    EyeGainX = gx;
-                if (parts.Length >= 2 && float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var gy))
-                    EyeGainY = gy;
+                if (parts.Length >= 1)
+                {
+                    if (float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var gx))
+                        EyeGainX = gx;
+                    else
+                        logger.LogWarning("config.ini eye_gain X component '{Value}' is not a number; keeping default {Default}",
+                            parts[0].Trim(), EyeGainX);
+                }
+                if (parts.Length >= 2)
+                {
+                    if (float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var gy))
+                        EyeGainY = gy;
+                    else
+                        logger.LogWarning("config.ini eye_gain Y component '{Value}' is not a number; keeping default {Default}",
+                            parts[1].Trim(), EyeGainY);
+                }
                 break;
             case "log-raw":
-                LogRaw = ParseBoolEnable(value) ?? false;
+                {
+                    var parsed = ParseBoolEnable(value);
+                    if (parsed is null)
+                        logger.LogWarning("config.ini {Key}='{Value}' is not a recognized enable/disable value; keeping default", key, value);
+                    else LogRaw = parsed.Value;
+                }
                 break;
             case "log-file":
                 if (value.Length > 0) LogFile = value;
@@ -101,9 +128,20 @@ public class Config
             case "log-interval-ms":
                 if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var iv) && iv >= 0)
                     LogIntervalMs = iv;
+                else
+                    logger.LogWarning("config.ini log-interval-ms '{Value}' is not a non-negative integer; keeping default {Default}",
+                        value, LogIntervalMs);
                 break;
             case "log-include-visemes":
-                LogIncludeVisemes = ParseBoolEnable(value) ?? false;
+                {
+                    var parsed = ParseBoolEnable(value);
+                    if (parsed is null)
+                        logger.LogWarning("config.ini {Key}='{Value}' is not a recognized enable/disable value; keeping default", key, value);
+                    else LogIncludeVisemes = parsed.Value;
+                }
+                break;
+            default:
+                logger.LogWarning("config.ini contains unknown key '{Key}'; ignoring", key);
                 break;
         }
     }
