@@ -88,6 +88,33 @@ cheek_squint: disable
 # Disable only if your avatar rig expects raw simultaneous values.
 mouth_lr_differential: enable
 
+# ---- Wink latch -----------------------------------------------------------
+# When one eye is winked while the other looks toward the FOV edge, PICO's
+# blink estimator falls back to a symmetric value (both eyes ~0.4-0.6), so
+# the avatar half-lids on both sides. The latch arms on a clean wink and
+# re-emits the last clean EyeBlink_L / EyeBlink_R pair while the raw values
+# sit in the symmetric-collapse zone. It releases as soon as both eyes clearly
+# open or a real double blink is detected, so ordinary blinking is untouched.
+# Disable if your firmware doesn't exhibit the fallback or you prefer the
+# raw PICO output.
+wink_latch: enable
+
+# Blink >= trigger_high means the eye is considered closed enough to arm as
+# the "winking side"; the opposite eye must be <= trigger_low to count as
+# open. trigger_high is also the ceiling of the symmetric-collapse override
+# zone (see collapse_low below).
+wink_latch_trigger_high: 0.65
+wink_latch_trigger_low: 0.30
+
+# Symmetric-collapse detection: while latched, if both eyes sit in
+# [collapse_low, trigger_high) with |EyeBlink_L - EyeBlink_R| < symmetry_band,
+# the last clean pair is re-emitted instead of the collapsed values.
+# Keep collapse_low slightly above trigger_low: values falling through the
+# (trigger_low, collapse_low) gap are treated as genuinely opening eyes and
+# pass through immediately instead of being held.
+wink_latch_collapse_low: 0.35
+wink_latch_symmetry_band: 0.10
+
 # Raw value CSV logger. When enabled, one row per received packet is written to
 # `log-file` (rate-limited by log-interval-ms). Useful for observing what PICO
 # Connect is actually sending, and for deciding what adjustments are needed.
