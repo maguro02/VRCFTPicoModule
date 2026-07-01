@@ -237,7 +237,9 @@ namespace VRCFTPicoModule.Utils
 
             #region Lip
             // Prefer calibrated pucker over funnel for LipFunnel unless the same side is
-            // pressed shut (raw MouthPress kept — press has no observed baseline).
+            // pressed shut (raw MouthPress kept — press has no observed baseline). Note that
+            // the 0.3f threshold is applied to the *calibrated* pucker, so raising
+            // mouth_pucker_floor also effectively raises this activation point.
             var funnelActive = mouthPucker > 0.3f;
             var funnelLeft = funnelActive && mouthPressLeft < 0.2f ? mouthPucker : mouthFunnel;
             var funnelRight = funnelActive && mouthPressRight < 0.2f ? mouthPucker : mouthFunnel;
