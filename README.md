@@ -69,5 +69,14 @@ Set `log-raw: enable` and open the resulting CSV. Each row contains:
 - `Openness_L`, `GazeX_L`, `GazeY_L`, `Openness_R`, `GazeX_R`, `GazeY_R` — the values
   actually written into `UnifiedTracking.Data.Eye` after this module's computation
 
+> [!NOTE]
+> When `eye-tracking: disable` (or a `.disable_eye` flag file is present), this module does
+> not update `UnifiedTracking.Data.Eye`, so the `Openness_*` / `Gaze*` columns reflect
+> whatever another module last wrote (or the default `0`), not this module's input. Only
+> the raw blendshape columns are meaningful in that case.
+>
+> The `log-include-visemes: enable` option is silently ignored on the legacy protocol
+> (port `29763`) because those packets only carry the 52 ARKit shapes.
+
 This lets you observe the raw Pico input and the module's derived eye state side-by-side
 without patching the DLL or running Wireshark.
