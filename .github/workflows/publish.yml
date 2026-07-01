@@ -9,12 +9,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - name: Setup .NET Core
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '7.x'
 
@@ -63,7 +63,7 @@ jobs:
           Compress-Archive -Path $filesToZip -DestinationPath ./output/VRCFTPicoModule.zip
 
       - name: Create Release and Upload Assets
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             ./output/VRCFTPicoModule.dll
