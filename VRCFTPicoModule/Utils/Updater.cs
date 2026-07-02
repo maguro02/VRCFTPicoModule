@@ -50,7 +50,11 @@ namespace VRCFTPicoModule.Utils
             _udpClient.Client.ReceiveTimeout = 100;
             _moduleState = state;
             
-            if (_moduleState != ModuleState.Active) return;
+            if (_moduleState != ModuleState.Active)
+            {
+                ResetWinkLatch();
+                return;
+            }
 
             try
             {
@@ -78,6 +82,7 @@ namespace VRCFTPicoModule.Utils
                 {
                     _logger.LogWarning(T("update-timeout"));
                     _timeOut = 0;
+                    ResetWinkLatch();
                 }
             }
             catch (Exception ex)
@@ -304,6 +309,15 @@ namespace VRCFTPicoModule.Utils
             _latchedBlinkL = bl;
             _latchedBlinkR = br;
             return (bl, br);
+        }
+
+        // A latched pair is only meaningful while the blink stream is continuous; after a
+        // tracking gap it would re-emit a stale wink, so drop the latch on interruption.
+        private void ResetWinkLatch()
+        {
+            _winkLatchArmed = false;
+            _latchedBlinkL = 0f;
+            _latchedBlinkR = 0f;
         }
 
         private static float ComputeGazeY(float lookUp, float lookDown, Config config)

@@ -42,7 +42,7 @@ public class Config
     // winked while the other is at an extreme gaze angle: both EyeBlink channels
     // converge to the same mid value (~0.4-0.6), so the avatar goes half-lidded on
     // both sides. The latch arms on a clean wink (one side >= trigger_high, other side
-    // <= trigger_low), then re-emits the last clean pair while the raw values sit in
+    // <= trigger_low), then re-emits the last non-collapsed pair while the raw values sit in
     // the symmetric-collapse zone. It releases on either eyes-open or a real double
     // blink so ordinary blinking is untouched.
     public bool WinkLatchEnabled { get; private set; } = true;
@@ -132,6 +132,16 @@ public class Config
                 config.WinkLatchTriggerLow,
                 config.WinkLatchCollapseLow,
                 config.WinkLatchSymmetryBand);
+            // Blink values live in [0, 1]; thresholds outside that range or ordered wrong
+            // never match, silently turning the latch into a no-op.
+            if (config.WinkLatchEnabled
+                && (config.WinkLatchTriggerHigh > 1f
+                    || config.WinkLatchTriggerLow >= config.WinkLatchTriggerHigh
+                    || config.WinkLatchCollapseLow <= config.WinkLatchTriggerLow
+                    || config.WinkLatchCollapseLow >= config.WinkLatchTriggerHigh
+                    || config.WinkLatchSymmetryBand <= 0f))
+                logger.LogWarning(
+                    "config.ini wink latch thresholds are inconsistent (expected 0 <= trigger_low < collapse_low < trigger_high <= 1 and symmetry_band > 0); the latch may never engage");
         }
         catch (Exception ex)
         {
@@ -365,7 +375,7 @@ public class Config
         # PICO's per-eye blink estimator falls back to a symmetric value (both eyes
         # ~0.4-0.6) when one eye is winked while the other looks toward the FOV edge,
         # so the avatar half-lids on both sides. The latch arms on a clean wink and
-        # re-emits the last clean EyeBlink_L / EyeBlink_R pair while the raw values
+        # re-emits the last non-collapsed EyeBlink_L / EyeBlink_R pair while the raw values
         # sit in the symmetric-collapse zone; it releases as soon as both eyes clearly
         # open or a real double blink is detected, so ordinary blinking is untouched.
         # Disable if your firmware doesn't exhibit the fallback or you prefer raw
@@ -378,7 +388,7 @@ public class Config
         wink_latch_trigger_low: 0.30
         # Lower bound of the symmetric-collapse zone: both eyes in
         # [collapse_low, trigger_high) with |L - R| < symmetry_band means PICO's
-        # fallback fired and the latch will hold the last clean pair. Keep
+        # fallback fired and the latch will hold the last non-collapsed pair. Keep
         # collapse_low slightly above trigger_low so genuinely opening eyes
         # pass through immediately instead of being held.
         wink_latch_collapse_low: 0.35

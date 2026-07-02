@@ -92,7 +92,7 @@ mouth_lr_differential: enable
 # When one eye is winked while the other looks toward the FOV edge, PICO's
 # blink estimator falls back to a symmetric value (both eyes ~0.4-0.6), so
 # the avatar half-lids on both sides. The latch arms on a clean wink and
-# re-emits the last clean EyeBlink_L / EyeBlink_R pair while the raw values
+# re-emits the last non-collapsed EyeBlink_L / EyeBlink_R pair while the raw values
 # sit in the symmetric-collapse zone. It releases as soon as both eyes clearly
 # open or a real double blink is detected, so ordinary blinking is untouched.
 # Disable if your firmware doesn't exhibit the fallback or you prefer the
@@ -108,7 +108,7 @@ wink_latch_trigger_low: 0.30
 
 # Symmetric-collapse detection: while latched, if both eyes sit in
 # [collapse_low, trigger_high) with |EyeBlink_L - EyeBlink_R| < symmetry_band,
-# the last clean pair is re-emitted instead of the collapsed values.
+# the last non-collapsed pair is re-emitted instead of the collapsed values.
 # Keep collapse_low slightly above trigger_low: values falling through the
 # (trigger_low, collapse_low) gap are treated as genuinely opening eyes and
 # pass through immediately instead of being held.
