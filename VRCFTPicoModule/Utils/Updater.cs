@@ -35,6 +35,10 @@ namespace VRCFTPicoModule.Utils
         private const float SmoothingFactor = 0.5f;
         private ModuleState _moduleState;
 
+        private bool _winkLatchArmed;
+        private float _latchedBlinkL;
+        private float _latchedBlinkR;
+
         public void Update(ModuleState state)
         {
             if (_udpClient == null)
@@ -46,7 +50,11 @@ namespace VRCFTPicoModule.Utils
             _udpClient.Client.ReceiveTimeout = 100;
             _moduleState = state;
             
-            if (_moduleState != ModuleState.Active) return;
+            if (_moduleState != ModuleState.Active)
+            {
+                ResetWinkLatch();
+                return;
+            }
 
             try
             {
@@ -55,7 +63,7 @@ namespace VRCFTPicoModule.Utils
                 var pShape = ParseData(data, _isLegacy);
 
                 if (_trackingAvailable.Item1)
-                    UpdateEye(pShape, _config);
+                    UpdateEye(pShape);
 
                 if (_trackingAvailable.Item2)
                     UpdateExpression(pShape);
@@ -74,6 +82,7 @@ namespace VRCFTPicoModule.Utils
                 {
                     _logger.LogWarning(T("update-timeout"));
                     _timeOut = 0;
+                    ResetWinkLatch();
                 }
             }
             catch (Exception ex)
@@ -93,30 +102,34 @@ namespace VRCFTPicoModule.Utils
             return header.trackingType == 2 ? DataPacketHelpers.ByteArrayToStructure<DataPacket.DataPackBody>(data, Marshal.SizeOf<DataPacket.DataPackHeader>()).blendShapeWeight : [];
         }
 
-        private static void UpdateEye(float[] pShape, Config config)
+        private void UpdateEye(float[] pShape)
         {
             var eye = UnifiedTracking.Data.Eye;
 
+            var (blinkL, blinkR) = ApplyWinkLatch(
+                pShape[(int)BlendShape.Index.EyeBlink_L],
+                pShape[(int)BlendShape.Index.EyeBlink_R]);
+
             #region LeftEye
-            eye.Left.Openness = 1f - pShape[(int)BlendShape.Index.EyeBlink_L];
+            eye.Left.Openness = 1f - blinkL;
             eye.Left.Gaze.x = Math.Clamp(
-                (pShape[(int)BlendShape.Index.EyeLookIn_L] - pShape[(int)BlendShape.Index.EyeLookOut_L]) * config.EyeGainX,
+                (pShape[(int)BlendShape.Index.EyeLookIn_L] - pShape[(int)BlendShape.Index.EyeLookOut_L]) * _config.EyeGainX,
                 -1f, 1f);
             eye.Left.Gaze.y = ComputeGazeY(
                 pShape[(int)BlendShape.Index.EyeLookUp_L],
                 pShape[(int)BlendShape.Index.EyeLookDown_L],
-                config);
+                _config);
             #endregion
 
             #region RightEye
-            eye.Right.Openness = 1f - pShape[(int)BlendShape.Index.EyeBlink_R];
+            eye.Right.Openness = 1f - blinkR;
             eye.Right.Gaze.x = Math.Clamp(
-                (pShape[(int)BlendShape.Index.EyeLookOut_R] - pShape[(int)BlendShape.Index.EyeLookIn_R]) * config.EyeGainX,
+                (pShape[(int)BlendShape.Index.EyeLookOut_R] - pShape[(int)BlendShape.Index.EyeLookIn_R]) * _config.EyeGainX,
                 -1f, 1f);
             eye.Right.Gaze.y = ComputeGazeY(
                 pShape[(int)BlendShape.Index.EyeLookUp_R],
                 pShape[(int)BlendShape.Index.EyeLookDown_R],
-                config);
+                _config);
             #endregion
             
             #region Brow
@@ -270,6 +283,41 @@ namespace VRCFTPicoModule.Utils
         {
             lastValue += (newValue - lastValue) * SmoothingFactor;
             return lastValue;
+        }
+
+        private (float blinkL, float blinkR) ApplyWinkLatch(float bl, float br)
+        {
+            if (!_config.WinkLatchEnabled)
+                return (bl, br);
+
+            var high = _config.WinkLatchTriggerHigh;
+            var low = _config.WinkLatchTriggerLow;
+
+            if ((bl >= high && br <= low) || (br >= high && bl <= low))
+                _winkLatchArmed = true;
+            else if ((bl <= low && br <= low) || (bl >= high && br >= high))
+                _winkLatchArmed = false;
+
+            var inCollapse = _winkLatchArmed
+                          && bl >= _config.WinkLatchCollapseLow && bl < high
+                          && br >= _config.WinkLatchCollapseLow && br < high
+                          && MathF.Abs(bl - br) < _config.WinkLatchSymmetryBand;
+
+            if (inCollapse)
+                return (_latchedBlinkL, _latchedBlinkR);
+
+            _latchedBlinkL = bl;
+            _latchedBlinkR = br;
+            return (bl, br);
+        }
+
+        // A latched pair is only meaningful while the blink stream is continuous; after a
+        // tracking gap it would re-emit a stale wink, so drop the latch on interruption.
+        private void ResetWinkLatch()
+        {
+            _winkLatchArmed = false;
+            _latchedBlinkL = 0f;
+            _latchedBlinkR = 0f;
         }
 
         private static float ComputeGazeY(float lookUp, float lookDown, Config config)

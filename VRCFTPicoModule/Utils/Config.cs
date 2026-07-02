@@ -38,6 +38,19 @@ public class Config
     // Differential mode passes only the dominant side, which prevents the opposite-cheek bleed.
     public bool MouthLeftRightDifferential { get; private set; } = true;
 
+    // PICO's eye-tracking estimator collapses to a symmetric fallback when one eye is
+    // winked while the other is at an extreme gaze angle: both EyeBlink channels
+    // converge to the same mid value (~0.4-0.6), so the avatar goes half-lidded on
+    // both sides. The latch arms on a clean wink (one side >= trigger_high, other side
+    // <= trigger_low), then re-emits the last non-collapsed pair while the raw values sit in
+    // the symmetric-collapse zone. It releases on either eyes-open or a real double
+    // blink so ordinary blinking is untouched.
+    public bool WinkLatchEnabled { get; private set; } = true;
+    public float WinkLatchTriggerHigh { get; private set; } = 0.65f;
+    public float WinkLatchTriggerLow { get; private set; } = 0.30f;
+    public float WinkLatchCollapseLow { get; private set; } = 0.35f;
+    public float WinkLatchSymmetryBand { get; private set; } = 0.10f;
+
     public bool LogRaw { get; private set; }
     public string LogFile { get; private set; } = "PicoRawLog.csv";
     public int LogIntervalMs { get; private set; } = 50;
@@ -112,6 +125,23 @@ public class Config
                 config.CheekPuffEnabled,
                 config.CheekSquintEnabled,
                 config.MouthLeftRightDifferential);
+            logger.LogInformation(
+                "wink latch: enabled={Enabled} trigger=(high={High},low={Low}) collapse-low={CollapseLow} symmetry-band={SymBand}",
+                config.WinkLatchEnabled,
+                config.WinkLatchTriggerHigh,
+                config.WinkLatchTriggerLow,
+                config.WinkLatchCollapseLow,
+                config.WinkLatchSymmetryBand);
+            // Blink values live in [0, 1]; thresholds outside that range or ordered wrong
+            // never match, silently turning the latch into a no-op.
+            if (config.WinkLatchEnabled
+                && (config.WinkLatchTriggerHigh > 1f
+                    || config.WinkLatchTriggerLow >= config.WinkLatchTriggerHigh
+                    || config.WinkLatchCollapseLow <= config.WinkLatchTriggerLow
+                    || config.WinkLatchCollapseLow >= config.WinkLatchTriggerHigh
+                    || config.WinkLatchSymmetryBand <= 0f))
+                logger.LogWarning(
+                    "config.ini wink latch thresholds are inconsistent (expected 0 <= trigger_low < collapse_low < trigger_high <= 1 and symmetry_band > 0); the latch may never engage");
         }
         catch (Exception ex)
         {
@@ -201,6 +231,21 @@ public class Config
                 break;
             case "mouth_lr_differential":
                 MouthLeftRightDifferential = ParseBoolOr(key, value, MouthLeftRightDifferential, logger);
+                break;
+            case "wink_latch":
+                WinkLatchEnabled = ParseBoolOr(key, value, WinkLatchEnabled, logger);
+                break;
+            case "wink_latch_trigger_high":
+                WinkLatchTriggerHigh = ParseFloat(key, value, WinkLatchTriggerHigh, logger, min: 0f);
+                break;
+            case "wink_latch_trigger_low":
+                WinkLatchTriggerLow = ParseFloat(key, value, WinkLatchTriggerLow, logger, min: 0f);
+                break;
+            case "wink_latch_collapse_low":
+                WinkLatchCollapseLow = ParseFloat(key, value, WinkLatchCollapseLow, logger, min: 0f);
+                break;
+            case "wink_latch_symmetry_band":
+                WinkLatchSymmetryBand = ParseFloat(key, value, WinkLatchSymmetryBand, logger, min: 0f);
                 break;
             case "log-raw":
                 LogRaw = ParseBoolOr(key, value, LogRaw, logger);
@@ -325,6 +370,29 @@ public class Config
         # shifts to one side, so this passes only the dominant side to prevent opposite-side
         # bleed. Disable only if your avatar rig expects the raw simultaneous values.
         mouth_lr_differential: enable
+
+        # ---- Wink latch --------------------------------------------------------
+        # PICO's per-eye blink estimator falls back to a symmetric value (both eyes
+        # ~0.4-0.6) when one eye is winked while the other looks toward the FOV edge,
+        # so the avatar half-lids on both sides. The latch arms on a clean wink and
+        # re-emits the last non-collapsed EyeBlink_L / EyeBlink_R pair while the raw values
+        # sit in the symmetric-collapse zone; it releases as soon as both eyes clearly
+        # open or a real double blink is detected, so ordinary blinking is untouched.
+        # Disable if your firmware doesn't exhibit the fallback or you prefer raw
+        # PICO output.
+        wink_latch: enable
+        # Blink >= trigger_high means the eye is considered closed enough to arm as
+        # the "winking side"; opposite eye must be <= trigger_low to consider it open.
+        # trigger_high is also the ceiling of the symmetric-collapse override zone.
+        wink_latch_trigger_high: 0.65
+        wink_latch_trigger_low: 0.30
+        # Lower bound of the symmetric-collapse zone: both eyes in
+        # [collapse_low, trigger_high) with |L - R| < symmetry_band means PICO's
+        # fallback fired and the latch will hold the last non-collapsed pair. Keep
+        # collapse_low slightly above trigger_low so genuinely opening eyes
+        # pass through immediately instead of being held.
+        wink_latch_collapse_low: 0.35
+        wink_latch_symmetry_band: 0.10
 
         # Raw value CSV logger. When enabled, one row per received packet is written to `log-file`
         # (rate-limited by log-interval-ms). Useful for observing what PICO Connect is actually
