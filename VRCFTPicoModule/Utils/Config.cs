@@ -310,7 +310,6 @@ public class Config
         # On first run this file is auto-created next to the module DLL
         # (%APPDATA%\VRCFaceTracking\CustomLibs\config.ini). Edit and restart VRCFT.
         #
-        # VRCFTPicoModule config.ini
         # `#` または `;` で始まる行はコメント。各項目は `key: value` 形式。
         # 初回起動時にモジュールDLLの隣 (%APPDATA%\VRCFaceTracking\CustomLibs\config.ini)
         # に自動生成される。編集後は VRCFT を再起動して反映。
