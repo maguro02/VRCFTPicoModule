@@ -5,10 +5,10 @@ using System.Runtime.InteropServices;
 using VRCFaceTracking;
 using VRCFaceTracking.Core.Library;
 using VRCFaceTracking.Core.Params.Expressions;
-using VRCFTPicoModule.Data;
-using static VRCFTPicoModule.Utils.Localization;
+using VRCFTPicoModule.Maguro.Data;
+using static VRCFTPicoModule.Maguro.Utils.Localization;
 
-namespace VRCFTPicoModule.Utils
+namespace VRCFTPicoModule.Maguro.Utils
 {
     public class Updater()
     {

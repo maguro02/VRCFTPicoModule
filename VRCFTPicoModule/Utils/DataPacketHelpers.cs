@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace VRCFTPicoModule.Utils
+namespace VRCFTPicoModule.Maguro.Utils
 {
     public static class DataPacketHelpers
     {

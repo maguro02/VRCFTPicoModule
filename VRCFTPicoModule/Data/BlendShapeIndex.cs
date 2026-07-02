@@ -1,5 +1,5 @@
 ﻿// ReSharper disable InconsistentNaming
-namespace VRCFTPicoModule.Data;
+namespace VRCFTPicoModule.Maguro.Data;
 
 public abstract class BlendShape
 {

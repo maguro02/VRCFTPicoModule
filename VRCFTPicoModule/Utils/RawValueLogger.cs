@@ -2,9 +2,9 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Logging;
-using VRCFTPicoModule.Data;
+using VRCFTPicoModule.Maguro.Data;
 
-namespace VRCFTPicoModule.Utils;
+namespace VRCFTPicoModule.Maguro.Utils;
 
 public class RawValueLogger : IDisposable
 {

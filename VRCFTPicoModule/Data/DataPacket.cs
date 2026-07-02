@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace VRCFTPicoModule.Data
+namespace VRCFTPicoModule.Maguro.Data
 {
     public abstract class DataPacket
     {

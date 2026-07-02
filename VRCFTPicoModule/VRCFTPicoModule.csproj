@@ -4,6 +4,8 @@
     <LangVersion>preview</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>VRCFTPicoModule.Maguro</AssemblyName>
+    <RootNamespace>VRCFTPicoModule.Maguro</RootNamespace>
     <AssemblyVersion>0.1.11</AssemblyVersion>
     <FileVersion>$(AssemblyVersion)</FileVersion>
     <Version>$(AssemblyVersion)</Version>

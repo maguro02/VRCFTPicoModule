@@ -1,6 +1,6 @@
 ﻿using VRCFaceTracking.Core.Helpers;
 
-namespace VRCFTPicoModule.Utils;
+namespace VRCFTPicoModule.Maguro.Utils;
 
 public class Localization
 {
@@ -17,8 +17,8 @@ public class Localization
 
     private async Task LoadLanguageAsync(string languageCode)
     {
-        var jsonContent = await LoadResourceAsync($"VRCFTPicoModule.Assets.Locales.{languageCode}.json")
-                          ?? await LoadResourceAsync("VRCFTPicoModule.Assets.Locales.en-US.json");
+        var jsonContent = await LoadResourceAsync($"VRCFTPicoModule.Maguro.Assets.Locales.{languageCode}.json")
+                          ?? await LoadResourceAsync("VRCFTPicoModule.Maguro.Assets.Locales.en-US.json");
 
         if (jsonContent != null)
         {

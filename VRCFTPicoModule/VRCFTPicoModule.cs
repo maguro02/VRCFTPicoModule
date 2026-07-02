@@ -3,10 +3,10 @@ using Microsoft.Extensions.Logging;
 using System.Net.Sockets;
 using System.Reflection;
 using VRCFaceTracking;
-using VRCFTPicoModule.Utils;
-using static VRCFTPicoModule.Utils.Localization;
+using VRCFTPicoModule.Maguro.Utils;
+using static VRCFTPicoModule.Maguro.Utils.Localization;
 
-namespace VRCFTPicoModule;
+namespace VRCFTPicoModule.Maguro;
 
 public class VRCFTPicoModule : ExtTrackingModule
 {
@@ -98,8 +98,8 @@ public class VRCFTPicoModule : ExtTrackingModule
             { Item1: false, Item2: true } => T("expression-tracking"),
             _ => ""
         };
-        ModuleInformation.Name = "PICO / " + moduleTrackingStatus + moduleProtocol;
-        var stream = GetType().Assembly.GetManifestResourceStream("VRCFTPicoModule.Assets.pico.png");
+        ModuleInformation.Name = "PICO (Maguro) / " + moduleTrackingStatus + moduleProtocol;
+        var stream = GetType().Assembly.GetManifestResourceStream("VRCFTPicoModule.Maguro.Assets.pico.png");
         ModuleInformation.StaticImages = stream != null ? [stream] : ModuleInformation.StaticImages;
     }
 

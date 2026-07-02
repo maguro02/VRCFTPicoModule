@@ -1,7 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 
-namespace VRCFTPicoModule.Utils;
+namespace VRCFTPicoModule.Maguro.Utils;
 
 public class Config
 {
@@ -305,7 +305,7 @@ public class Config
 
     private static string DefaultIniTemplate() =>
         """
-        # VRCFTPicoModule config.ini
+        # VRCFTPicoModule.Maguro config.ini (fork of lonelyicer/VRCFTPicoModule)
         # Lines starting with '#' or ';' are comments. Each entry uses `key: value` format.
         # On first run this file is auto-created next to the module DLL
         # (%APPDATA%\VRCFaceTracking\CustomLibs\config.ini). Edit and restart VRCFT.
